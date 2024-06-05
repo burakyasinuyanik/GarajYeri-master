@@ -1,0 +1,152 @@
+﻿<div class="row">
+    <div class="col-12">
+
+        <div class="card">
+            <div class="card-header bg-soft-success text-dark text-center d-flex">
+
+                <div class="col-11 text-center fs-3 text-dark">Araç Tipleri</div>
+                <div class="col-1 fs-3">
+                    <a href="#" id="btnAdd" class="btn btn-success"><i class="uil uil-plus me-2"></i>Yeni Kayıt</a>
+                </div>
+
+            </div>
+            <div class="card-body">
+                <table id="tblVehicleTypes" class="table table-bordered table-striped table-hover"></table>
+            </div>
+        </div>
+
+
+    </div>
+</div>
+
+<div class="modal fade" id="modalAdd" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" role="dialog" aria-labelledby="modalTitleId" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3 row">
+                    <input type="text" class="form-control" id="txtName" placeholder="Araç tip adını giriniz.">
+
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Kapat
+                </button>
+                <button type="button" id="btnSave" class="btn btn-primary">Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts{
+
+    <script>
+
+        var DataTable = "";
+        $(document).ready(() => {
+
+            DataTable = $("#tblVehicleTypes").DataTable({
+                ajax: '/VehicleType/GetAll',
+                columns: [
+                    { data: 'id', title: 'Id' },
+                    { data: 'name', title: 'Araç Tip Adı' },
+                    {
+                        data: 'id', title: 'İşlemler', render: (data) => {
+                            return `<a title="SİL" onclick="deleteVehicleType(${data},this)" class="btn uil-trash-alt fs-6 btn-danger"></a> <a title="DÜZENLE" onclick="updateVehicleType(${data}, this)" class="btn uil-pen fs-6 btn-success"></a>`
+                        }
+                    }
+                ]
+            });
+
+            $("#btnAdd").click(() => {
+
+                $("#modalAdd").modal("show");
+                $("#modalAdd .form-control").val('');
+                $("#modalTitle").text("Yeni Araç Tipi Ekleme Formu");
+
+                $("#btnSave").text("Kaydet").off().click(() => {
+
+                    $.ajax({
+                        url: '/VehicleType/Add',
+                        type: 'POST',
+                        data: {
+                            vehicleType: {
+                                name: $("#txtName").val()
+                            }
+                        },
+                        success: (res) => {
+                            $("#modalAdd").modal("hide");
+                            DataTable.row.add(res).draw();
+
+                        }
+                    });
+
+                });
+
+            });
+
+        });
+
+        function deleteVehicleType(vehicleTypeId, button) {
+            Swal.fire({ title: 'Silmek istediğinize emin misiniz ?', icon:'warning', showCancelButton: true, confirmButtonText:'Evet', cancelButtonText: 'Vazgeç' 
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    $.ajax({
+                        url:'/VehicleType/SoftDelete',
+                        type:'POST',
+                        data:{id:vehicleTypeId},
+                        success: () => {
+                            let satir = $(button).parent().parent();
+                            DataTable.row(satir).remove().draw();
+                        }
+                    });
+                }
+            })
+        }
+
+        function updateVehicleType(vehicleTypeId, button) {
+            $.ajax({
+                url:'/VehicleType/GetById',
+                type:'POST',
+                data: {
+                    id:vehicleTypeId
+                },
+                success: (res) => {
+                    $("#modalAdd").modal("show");
+                    $("#modalTitle").text('Araç Tipi Güncelleme');
+                    $("#txtName").val(res.name);
+
+                    $("#btnSave").off().text("Güncelle").click(() => {
+
+                        res.name = $("#txtName").val();
+
+                        $.ajax({
+                            url: '/VehicleType/Update',
+                            type: 'POST',
+                            data: {
+                                vehicleType: res
+                            },
+                            success: () => {
+                                let satir = $(button).parent().parent();
+                                DataTable.row(satir).data(res).draw();
+                                $("#modalAdd").modal("hide");
+                            }
+                        })
+
+                    });
+                }
+
+               
+            });
+
+        }
+
+
+    </script>
+}

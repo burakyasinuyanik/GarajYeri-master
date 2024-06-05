@@ -1,0 +1,231 @@
+﻿<div class="row">
+    <div class="col-12">
+
+        <div class="card">
+            <div class="card-header bg-soft-success text-dark text-center d-flex">
+
+                <div class="col-11 text-center fs-3 text-dark">Araç İşlem Listesi</div>
+                <div class="col-1 fs-3">
+                    <a href="#" id="btnAdd" class="btn btn-success"><i class="uil uil-plus me-2"></i>Yeni Kayıt</a>
+                </div>
+
+            </div>
+            <div class="card-body">
+                <table id="tblVehicleProcess" class="table table-bordered table-striped table-hover"></table>
+            </div>
+        </div>
+
+
+    </div>
+</div>
+
+<div class="modal fade" id="modalAdd" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" role="dialog" aria-labelledby="modalTitleId" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+
+                <div class="mb-3 row">
+                    <label for="vehicle" class="form-label">Araçlar</label>
+                    <select id="ddlVehicle" class="form-select">
+                    </select>
+
+                </div>
+                <div class="mb-3 row">
+                    <label for="ProcessType" class="form-label">İşlem Tipi</label>
+                    <select id="ddlProcessType" class="form-select">
+                    </select>
+
+                </div>
+                <div class="mb-3 row">
+
+                    <label for="description" class="form-label">Description</label>
+                    <textarea id="txtDescription" name="description" class="form-control" rows="4" placeholder="Açıklama Ekleyiniz"></textarea>
+
+                </div>
+                <div class="mb-3 row">
+
+                    <label for="odemeter" class="form-label">Kilometre</label>
+                    <input type="text" class="form-control" id="txtOdemeter" placeholder="Kilometre bilgisi giriniz">
+
+                </div>
+                <div class="mb-3 row">
+                    <input type="text" id="txtPrice" class="form-control" placeholder="İşlem fiyatı giriniz">
+                </div>
+                
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Kapat
+                </button>
+                <button type="button" id="btnSave" class="btn btn-primary">Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts{
+    <script>
+        var DataTable = '';
+        $(document).ready(function () {
+            DataTable = $("#tblVehicleProcess").DataTable({
+                ajax:'/VehicleProcess/GetAll',
+                columns: [
+                   
+                    { data:'id', title:'Id'},
+                    { data: 'vehicleName', title: 'Araç Adı' },
+                    { data: 'vehicleProcessTypeName', title: 'İşlem Adı' },
+                    { data: 'description', title:'İşlem Açıklaması' },
+                    { data: 'price', title:'İşlem Fiyatı' },
+                    { data: "odemeter", title: 'Kilometre' },
+                    { data: 'id', title: 'İşlemler', render: (data) => {
+
+                            return `<a onclick="deleteVehicleProcess(${data},this)" title="SİL" class="btn btn uil-trash-alt fs-6 btn-danger "></a> <a onclick="updateVehicleProcess(${data},this)" class="btn uil-pen fs-6 btn-success" title="DÜZENLE"></a>`
+                    }}
+                    
+                ]
+            });
+
+            $("#btnAdd").off().click(() => {
+                $("#modalAdd").modal("show");
+                $("#modalAdd .form-control").val('');
+                $("#modalTitle").text("Yeni Araç İşlemi Ekleme");
+                fillVehicles();
+                fillVehicleProcessType();
+
+                $("#btnSave").off().text('Kaydet').click(() => {
+                    let process = {
+                        vehicleId: $("#ddlVehicle").val(),
+                        vehicleProcessTypeId: $("#ddlProcessType").val(),
+                        price: $("#txtPrice").val(),
+                        odometer: $("#txtOdemeter").val(),
+                        description: $("#txtDescription").val()
+                    }
+
+                  
+                    $.ajax({
+                        url: '/VehicleProcess/Add',
+                        type: 'POST',
+                        data: { vehicleProcess:process },
+                        success: (res) => {
+                            $("#modalAdd").modal("hide");
+                            res.vehicleName = $("#ddlVehicle option:selected").text();
+                            res.vehicleProcessTypeName = $("#ddlProcessType option:selected").text();
+                            DataTable.row.add(res).draw();
+                          
+                        },
+                        error: (xhr, status, error) => {
+                            alert(`Error: ${xhr.responseText}`);
+                        }
+                    });
+                });
+
+                
+            })
+
+        });
+
+        function fillVehicles() {
+            $.ajax({
+                url:"/Vehicle/GetAll",
+                type:'GET',
+                success: function (res) {
+                    $("#ddlVehicle").empty().append(new Option("Lütfen seçim yapınız", 0));
+                    for (let item of res.data) {
+                        $("#ddlVehicle").append(new Option(item.name, item.id));
+                    }
+                }
+            });
+        };
+        function fillVehicleProcessType() {
+            $.ajax({
+                url:"/VehicleProcessType/GetAll",
+                type:'GET',
+                success: (res) => {
+                    $("#ddlProcessType").empty().append(new Option("Lütfen Seçim Yapınız", 0));
+                    for (let item of res.data) {
+                        $("#ddlProcessType").append(new Option(item.name, item.id));
+                    }
+                }
+            })
+
+        };
+     
+
+        
+        function deleteVehicleProcess(vehicleProcessId, button) {
+            swal.fire({
+                title: 'Silmek İstedğinize emin misiniz ?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Evet', cancelButtonText: 'Vazgeç'
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    $.ajax({
+                        url: '/VehicleProcess/SoftDelete',
+                        type: 'POST',
+                        data: { id: vehicleProcessId },
+                        success: () => {
+                            let satir = $(button).parent().parent();
+                            DataTable.row(satir).remove().draw(false);
+
+                        }
+                    });
+
+                }
+            });
+
+        };
+
+        function updateVehicleProcess(vehicleProcessId, button){
+            $.ajax({
+                url:'/VehicleProcess/GetById',
+                type:'POST',
+                data: {id:vehicleProcessId},
+                success: (res) => {
+                    $("#modalAdd").modal("show");
+                    fillVehicles();
+                    fillVehicleProcessType();
+                    $("#modalTitle").text("Araç İşlemi Düzenleme");
+                    $("#txtDescription").val(res.description);
+                    $("#txtPrice").val(res.price);
+                    $("#txtOdemeter").val(res.odemeter);
+                    $("#ddlVehicle").val(res.vehicleId);
+                    $("#ddlProcessType").val(res.processTypeId);
+
+                    $("#btnSave").off().text("Güncelle").click(() => {
+
+                        res.description = $("#txtDescription").val();
+                        res.price = $("#txtPrice").val();
+                        res.odemeter = $("#txtOdemeter").val();
+                        res.processTypeId = $("#ddlProcessType").val();
+                        res.vehicleId = $("#ddlVehicle").val();
+
+                        $.ajax({
+                            url: '/VehicleProcess/Update',
+                            type: 'POST',
+                            data: {
+                                description: res.description,
+                                price: res.price,
+                                odemeter: res.odemeter,
+                                processTypeId: res.processTypeId,
+                                vehicleId: res.vehicleId
+
+                            },
+                            success: () => {
+                                let satir = $(button).parent().parent();
+                                DataTable.row(satir).data(res).draw();
+                                $("#modalAdd").modal("hide");
+                            }
+                        });
+
+                    });
+
+                }
+            });
+        }
+
+
+    </script>
+}

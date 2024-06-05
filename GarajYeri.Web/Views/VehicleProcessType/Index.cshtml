@@ -1,0 +1,148 @@
+﻿<div class="row">
+    <div class="col-12">
+
+        <div class="card">
+            <div class="card-header bg-soft-success text-dark text-center d-flex">
+
+                <div class="col-11 text-center fs-3 text-dark">Araç İşlem Tipleri</div>
+                <div class="col-1 fs-3">
+                    <a href="#" id="btnAdd" class="btn btn-success"><i class="uil uil-plus me-2"></i>Yeni Kayıt</a>
+                </div>
+
+            </div>
+            <div class="card-body">
+                <table id="tblVehicleProcessType" class="table table-bordered table-striped table-hover"></table>
+            </div>
+        </div>
+
+
+    </div>
+</div>
+
+<div class="modal fade" id="modalAdd" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" role="dialog" aria-labelledby="modalTitleId" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3 row">
+                    <input type="text" class="form-control" id="txtName" placeholder="Araç işlem tip adını giriniz." />
+                    
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Kapat
+                </button>
+                <button type="button" id="btnSave" class="btn btn-primary">Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts{
+<script>
+    var DataTable = '';
+    $(document).ready(() => {
+        DataTable = $("#tblVehicleProcessType").DataTable({
+            ajax:'/VehicleProcessType/GetAll',
+            columns:[
+                {data:'id', title:'Id'},
+                {data:'name', title:'İşlem Tip Adı'},
+                {
+                    data: 'id', title: 'İşlemler', render: (data) => {
+
+                        return `<a onclick="deleteVehicleProcessType(${data},this)" title="SİL" class="btn btn uil-trash-alt fs-6 btn-danger "></a> <a onclick="updateVehicleProcessType(${data},this)" class="btn uil-pen fs-6 btn-success" title="DÜZENLE"></a>`
+                    }
+                
+                
+                }
+
+            ]
+        });
+
+        $("#btnAdd").off().click(() => {
+            $("#modalAdd").modal("show");
+            $("#modalAdd .form-control").val('');
+            $("#modalTitle").text("Yeni Araç İşlem Tipi Ekleme");
+
+            $("#btnSave").off().text("Kaydet").click(() => {
+                $.ajax({
+                    url: '/VehicleProcessType/Add',
+                    type: 'POST',
+                    data: {
+                        vehicleProcessType: {
+                            name: $("#txtName").val()
+                        }
+                    },
+                    success: (res) => {
+                        $("#modalAdd").modal("hide");
+                        DataTable.row.add(res).draw();
+                    }
+                });
+            });
+        });
+    });
+
+    function deleteVehicleProcessType (vehicleProcessTypeId, button) {
+        swal.fire({
+            title: 'Silmek İstedğinize emin misiniz ?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Evet', cancelButtonText: 'Vazgeç'
+        }).then((res) => {
+            if (res.isConfirmed) {
+                    $.ajax({
+                        url: '/VehicleProcessType/SoftDelete',
+                        type: 'POST',
+                        data: {
+                            id: vehicleProcessTypeId
+                        },
+                        success: () => {
+                            let satir = $(button).parent().parent();
+                            DataTable.row(satir).remove().draw();
+                        }
+                    });
+
+            }
+        });
+
+    };
+
+    function updateVehicleProcessType(vehicleProcessTypeId, button) {
+        $.ajax({
+            url:'/VehicleProcessType/GetById',
+            type:'POST',
+            data: {
+                id:vehicleProcessTypeId
+            },
+            success: (res) => {
+
+                $("#modalAdd").modal("show");
+                $("#modalTitle").text("Araç İşlem Tipi Güncelleme Formu");
+                $("#txtName").val(res.name);
+
+                $("#btnSave").off().text("Güncelle").click(() => {
+                    res.name = $("#txtName").val();
+                    $.ajax({
+                        url: '/VehicleProcessType/Update',
+                        type: 'POST',
+                        data: {
+                            name: res.name
+                        },
+                        success: () => {
+                            let satir = $(button).parent().parent();
+                            DataTable.row(satir).data(res).draw();
+                            $("#modalAdd").modal("hide");
+                        }
+                    });
+                });
+               
+
+            }
+
+        })
+    }
+</script>
+}
